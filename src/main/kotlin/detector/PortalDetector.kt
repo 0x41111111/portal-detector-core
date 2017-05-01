@@ -1,3 +1,5 @@
+package detector
+
 import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -27,43 +29,45 @@ class PortalDetector {
         val call = getCanaryContents()
 
         try {
-            call.execute().use {
-                if (!it.isSuccessful) {
-                    // TODO: tell the user that something replied with a failure code
-                    // this is probably the legitimate server or captive portal experiencing issues
-                    result.errorStatus = ErrorStatus.HTTP_RESPONSE_CODE_ERROR
-                    return@use
-                }
-
-                if (it.body() == null) {
-                    // the server sent an empty response
-                    // TODO: determine an appropriate failure message
-                    result.errorStatus = ErrorStatus.MISSING_BODY
-                    return@use
-                }
-
-                val responseBody = it.body()!!
-
-                // otherwise, parse the response body as an HTML document
-                val doc = Jsoup.parse(it.body()?.string())
-
-                // look for a given HTML element in the response body
-                // if it matches the expected value, there's no portal in place (or it's faking the portal detection page)
-                val element = doc.select(selector).first()
-                val contents = element.text()
-
-                if (contents != expectedResult) {
-                    // A captive portal is present. Proceed to the fingerprinting stage.
-                    result.present = true
-                    result.response = it
-                    return@use
-                }
-
-                // if we're here, all the other checks passed
-                // there's no captive portal in the way
-                result.present = false
-                result.errorStatus = ErrorStatus.SUCCEEDED
+            val it = call.execute()
+            if (!it.isSuccessful) {
+                // TODO: tell the user that something replied with a failure code
+                // this is probably the legitimate server or captive portal experiencing issues
+                result.errorStatus = ErrorStatus.HTTP_RESPONSE_CODE_ERROR
+                return result
             }
+
+            if (it.body() == null) {
+                // the server sent an empty response
+                // TODO: determine an appropriate failure message
+                result.errorStatus = ErrorStatus.MISSING_BODY
+                return result
+            }
+
+            val responseBody = it.body()!!
+            // otherwise, parse the response body as an HTML document
+            val doc = Jsoup.parse(responseBody.string())
+
+            // look for a given HTML element in the response body
+            // if it matches the expected value, there's no portal in place (or it's faking the portal detection page)
+            val element = doc.select(selector).first()
+            val contents = element.text()
+
+            result.response = it
+            result.html = doc
+
+            if (contents != expectedResult) {
+                // A captive portal is present. Proceed to the identification/resolution stage.
+                result.present = true
+
+                return result
+            }
+
+            // if we're here, all the other checks passed
+            // there's no captive portal in the way
+            result.present = false
+            result.errorStatus = ErrorStatus.SUCCEEDED
+
         } catch (e: IOException) {
             val r = PortalDetectionStatus()
             r.errorStatus = ErrorStatus.NETWORK_EXCEPTION

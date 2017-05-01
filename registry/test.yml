@@ -1,0 +1,18 @@
+name: test_portal
+displayName: Test Captive Portal
+criteria:
+  - component: HEADER
+    key: Server
+    value: ATS/7.0.0
+    causesCompleteMatch: false
+  - component: HTML_SELECTOR
+    key: title
+    value: Success
+    causesCompleteMatch: false
+resolution:
+  url: http://example.com
+  method: POST
+  parameters:
+    q: aaaaaa
+  headers:
+    x: yyyyyy
