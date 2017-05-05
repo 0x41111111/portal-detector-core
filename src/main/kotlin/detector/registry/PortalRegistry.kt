@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import detector.PortalDetectionStatus
 import java.io.File
-import kotlin.system.exitProcess
 
 /**
  * Contains all the captive portal definitions loaded off disc.
@@ -18,6 +17,8 @@ class PortalRegistry {
 
     // When called, this function recurses the registry directory looking for portal definitions and registers them.
     fun populate() {
+        println("Loading portal definitions.")
+
         val mapper = ObjectMapper(YAMLFactory())
 
         File(directory).walkTopDown().forEach {
@@ -29,31 +30,27 @@ class PortalRegistry {
                 return@forEach // this isn't a portal definition
             }
 
-            println("Adding ${it.nameWithoutExtension}")
+            println("Loading ${it.nameWithoutExtension}")
 
             val fileContent = it.readText()
             val definition = mapper.readValue(fileContent, CaptivePortalDefinition::class.java)
 
             portals.add(definition)
 
-            println("Added ${it.nameWithoutExtension}: ${definition.displayName}")
+            println("Loaded ${it.nameWithoutExtension}: ${definition.displayName}")
         }
     }
 
-    fun getPortal(status: PortalDetectionStatus) {
-        if (status.response == null) {
-            println("A null response was provided to getPortal, this is bad.")
-            exitProcess(127)
-        }
-
-        var resolved = false
-
+    fun getPortal(status: PortalDetectionStatus): CaptivePortalDefinition? {
         portals.forEach {
             val match = it.match(status.response!!, status.html!!)
             if (match) {
                 println("Found a match: ${it.displayName}")
-                it.resolve()
+                return it
             }
         }
+
+        println("No captive portal definitions matched the detected captive portal.")
+        return null
     }
 }

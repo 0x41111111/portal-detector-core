@@ -78,6 +78,8 @@ class CaptivePortalDefinition() {
         return true
     }
 
+    // If the portal definition contains a resolution section, this method should be called to resolve the portal.
+    // If the portal can't be resolved, this method will immediately return a status code indicating that the portal is unresolveable.
     fun resolve(r: Response): PortalResolutionStatus {
         if (resolution == null) {
             return PortalResolutionStatus.UNRESOLVEABLE
@@ -96,6 +98,8 @@ class CaptivePortalDefinition() {
                 uri = appendToURI(uri, "$k=$v")
             }
         }
+
+        builder = builder.url(uri.toURL())
 
         val request = builder.build()
         val call = client.newCall(request)
